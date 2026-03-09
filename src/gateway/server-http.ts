@@ -67,6 +67,8 @@ import {
 } from "./server/plugins-http.js";
 import type { ReadinessChecker } from "./server/readiness.js";
 import type { GatewayWsClient } from "./server/ws-types.js";
+import { handleBillingHttpRequest } from "../billing/billing-http.js";
+import { enforcePaywallHttp } from "../billing/paywall.js";
 import { handleToolsInvokeHttpRequest } from "./tools-invoke-http.js";
 
 type SubsystemLogger = ReturnType<typeof createSubsystemLogger>;
@@ -637,6 +639,24 @@ export function createGatewayHttpServer(opts: {
         ? resolvePluginRoutePathContext(requestPath)
         : null;
       const requestStages: GatewayHttpRequestStage[] = [
+        {
+          // Billing routes (/billing/*) — always reachable, no auth required for checkout/webhook
+          name: "billing",
+          run: () => handleBillingHttpRequest(req, res),
+        },
+        {
+          // Paywall gate: block AI/agent requests when no active subscription
+          name: "paywall",
+          run: () => {
+            // Only gate paths that invoke AI — let /billing, /health, /hooks, etc. through
+            const isAiPath =
+              requestPath.startsWith("/v1/") ||
+              requestPath.startsWith("/openai/") ||
+              requestPath.startsWith("/openresponses/");
+            if (!isAiPath) return false;
+            return enforcePaywallHttp(req, res);
+          },
+        },
         {
           name: "hooks",
           run: () => handleHooksRequest(req, res),
