@@ -641,9 +641,25 @@ export function createGatewayHttpServer(opts: {
         : null;
       const requestStages: GatewayHttpRequestStage[] = [
         {
-          // Billing routes (/billing/*) — always reachable, no auth required for checkout/webhook
+          // Billing routes (/billing/*). /billing/portal requires the gateway
+          // Bearer token; checkout/webhook/status are unauthenticated.
           name: "billing",
-          run: () => handleBillingHttpRequest(req, res),
+          run: async () => {
+            if (!requestPath.startsWith("/billing")) return false;
+            let authorized = false;
+            if (requestPath === "/billing/portal") {
+              const bearerToken = getBearerToken(req);
+              const authResult = await authorizeHttpGatewayConnect({
+                auth: resolvedAuth,
+                connectAuth: bearerToken ? { token: bearerToken, password: bearerToken } : null,
+                req,
+                trustedProxies,
+                allowRealIpFallback,
+              });
+              authorized = authResult.ok;
+            }
+            return handleBillingHttpRequest(req, res, { authorized });
+          },
         },
         {
           // Admin dashboard (/admin/billing/*) — requires gateway Bearer token

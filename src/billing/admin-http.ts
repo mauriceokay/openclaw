@@ -43,16 +43,16 @@ function buildDashboardHtml(): string {
 
   const subRows = allSubs.map((s) => `
     <tr>
-      <td><code>${s.customerId}</code></td>
-      <td><code>${s.subscriptionId}</code></td>
-      <td><span class="badge ${s.status === "active" || s.status === "trialing" ? "green" : "red"}">${s.status}</span></td>
+      <td><code>${escHtml(s.customerId)}</code></td>
+      <td><code>${escHtml(s.subscriptionId)}</code></td>
+      <td><span class="badge ${s.status === "active" || s.status === "trialing" ? "green" : "red"}">${escHtml(s.status)}</span></td>
       <td>${new Date(s.currentPeriodEnd * 1000).toLocaleDateString()}</td>
-      <td>${s.updatedAt}</td>
+      <td>${escHtml(s.updatedAt)}</td>
     </tr>`).join("") || `<tr><td colspan="5" class="empty">No subscriptions recorded yet.</td></tr>`;
 
   const userRows = users.map((u) => `
     <tr>
-      <td><code>${u.userId}…</code></td>
+      <td><code>${escHtml(u.userId)}…</code></td>
       <td>${u.label ? `<span class="label">${escHtml(u.label)}</span>` : "<em>—</em>"}</td>
       <td>${u.messagesSent.toLocaleString()}</td>
       <td>${u.estimatedTokens.toLocaleString()}</td>

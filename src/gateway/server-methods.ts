@@ -134,7 +134,7 @@ export async function handleGatewayRequest(
   }
   // Paywall: block AI-invoking methods when no active subscription.
   // Pass-through methods (connect, health, config reads, etc.) are unaffected.
-  const AI_GATED_METHODS = new Set(["chat.send", "chat.inject"]);
+  const AI_GATED_METHODS = new Set(["chat.send", "chat.inject", "agent"]);
   if (AI_GATED_METHODS.has(req.method)) {
     const paywallErr = paywallError();
     if (paywallErr) {

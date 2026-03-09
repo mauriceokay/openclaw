@@ -142,16 +142,11 @@ async function handleWebhook(req: IncomingMessage, res: ServerResponse): Promise
       deactivateSubscription({ subscriptionId: sub.id });
       break;
     }
-    case "invoice.payment_failed": {
-      const invoice = event.data.object as Stripe.Invoice;
-      const subId = typeof invoice.subscription === "string"
-        ? invoice.subscription
-        : invoice.subscription?.id;
-      if (subId) {
-        deactivateSubscription({ subscriptionId: subId });
-      }
+    case "invoice.payment_failed":
+      // Do not deactivate here — Stripe retries automatically. Access is
+      // revoked only when the subscription reaches "canceled" status via
+      // customer.subscription.deleted, which is already handled above.
       break;
-    }
     default:
       // Ignore unhandled event types
       break;
@@ -180,10 +175,15 @@ async function handlePortal(res: ServerResponse): Promise<void> {
 /**
  * Gateway HTTP stage handler for billing routes.
  * Returns true if the request was handled, false to continue the pipeline.
+ *
+ * `opts.authorized` must be true for the /billing/portal endpoint (it generates
+ * a Stripe customer-portal session and should only be accessible to the gateway
+ * operator who knows the Bearer token).
  */
 export async function handleBillingHttpRequest(
   req: IncomingMessage,
   res: ServerResponse,
+  opts: { authorized?: boolean } = {},
 ): Promise<boolean> {
   const url = req.url ?? "/";
   const requestPath = new URL(url, "http://localhost").pathname;
@@ -222,6 +222,13 @@ export async function handleBillingHttpRequest(
     }
 
     if (requestPath === PORTAL_PATH && req.method === "POST") {
+      if (!opts.authorized) {
+        res.statusCode = 401;
+        res.setHeader("Content-Type", "application/json; charset=utf-8");
+        res.setHeader("WWW-Authenticate", 'Bearer realm="openclaw-admin"');
+        res.end(JSON.stringify({ ok: false, error: "Unauthorized. Gateway token required." }));
+        return true;
+      }
       await handlePortal(res);
       return true;
     }
