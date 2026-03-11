@@ -3,15 +3,97 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
+import {
+  MODELS,
+  MODELS_BY_PROVIDER,
+  PROVIDER_LABELS,
+  type Provider,
+} from "@/lib/models";
+
+type AiSettings = {
+  preferredModel: string;
+  hasAnthropicKey: boolean;
+  hasOpenaiKey: boolean;
+  hasGeminiKey: boolean;
+};
 
 type Props = {
   user: { id: string; name: string | null; email: string | null; hasPassword: boolean };
+  aiSettings: AiSettings;
 };
 
-export default function SettingsClient({ user }: Props) {
+const PROVIDER_DOCS: Record<Provider, string> = {
+  anthropic: "https://console.anthropic.com/settings/keys",
+  openai:    "https://platform.openai.com/api-keys",
+  google:    "https://aistudio.google.com/app/apikey",
+};
+
+const PROVIDER_PLACEHOLDERS: Record<Provider, string> = {
+  anthropic: "sk-ant-...",
+  openai:    "sk-...",
+  google:    "AIza...",
+};
+
+export default function SettingsClient({ user, aiSettings }: Props) {
   const router = useRouter();
 
-  // --- Profile form ---
+  // ─── AI settings ────────────────────────────────────────────────────────
+
+  const [preferredModel, setPreferredModel] = useState(aiSettings.preferredModel);
+  const [hasKey, setHasKey] = useState<Record<Provider, boolean>>({
+    anthropic: aiSettings.hasAnthropicKey,
+    openai:    aiSettings.hasOpenaiKey,
+    google:    aiSettings.hasGeminiKey,
+  });
+  const [keyInput, setKeyInput] = useState<Record<Provider, string>>({
+    anthropic: "",
+    openai:    "",
+    google:    "",
+  });
+  const [aiMsg, setAiMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  async function saveModel(modelId: string) {
+    setAiMsg(null);
+    setAiLoading(true);
+    const res = await fetch("/api/user/aikeys", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "setModel", model: modelId }),
+    });
+    setAiLoading(false);
+    if (res.ok) {
+      setPreferredModel(modelId);
+      setAiMsg({ ok: true, text: "Default model saved." });
+      router.refresh();
+    } else {
+      const d = await res.json();
+      setAiMsg({ ok: false, text: d.error ?? "Failed to save model." });
+    }
+  }
+
+  async function saveProviderKey(provider: Provider, value: string) {
+    setAiMsg(null);
+    setAiLoading(true);
+    const res = await fetch("/api/user/aikeys", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "setKey", provider, apiKey: value }),
+    });
+    const data = await res.json();
+    setAiLoading(false);
+    if (res.ok) {
+      setHasKey((prev) => ({ ...prev, [provider]: !!value }));
+      setKeyInput((prev) => ({ ...prev, [provider]: "" }));
+      setAiMsg({ ok: true, text: value ? `${PROVIDER_LABELS[provider]} key saved.` : `${PROVIDER_LABELS[provider]} key removed.` });
+      router.refresh();
+    } else {
+      setAiMsg({ ok: false, text: data.error ?? "Failed to save key." });
+    }
+  }
+
+  // ─── Profile form ────────────────────────────────────────────────────────
+
   const [name, setName] = useState(user.name ?? "");
   const [email, setEmail] = useState(user.email ?? "");
   const [profileMsg, setProfileMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -36,7 +118,8 @@ export default function SettingsClient({ user }: Props) {
     }
   }
 
-  // --- Password form ---
+  // ─── Password form ────────────────────────────────────────────────────────
+
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -66,7 +149,8 @@ export default function SettingsClient({ user }: Props) {
     }
   }
 
-  // --- Delete account ---
+  // ─── Delete account ───────────────────────────────────────────────────────
+
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteMsg, setDeleteMsg] = useState("");
@@ -94,6 +178,8 @@ export default function SettingsClient({ user }: Props) {
     }
   }
 
+  // ─── Shared styles ────────────────────────────────────────────────────────
+
   const card: React.CSSProperties = {
     background: "#111",
     border: "1px solid #1f1f1f",
@@ -102,9 +188,145 @@ export default function SettingsClient({ user }: Props) {
     marginBottom: "1.5rem",
   };
 
+  const savedBadge: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "0.35rem",
+    background: "rgba(34,197,94,0.07)",
+    border: "1px solid rgba(34,197,94,0.2)",
+    borderRadius: 6,
+    padding: "0.2rem 0.6rem",
+    fontSize: "0.78rem",
+    color: "#22c55e",
+  };
+
+  const selectedModel = MODELS.find((m) => m.id === preferredModel);
+  const providers: Provider[] = ["anthropic", "openai", "google"];
+
   return (
     <div>
-      {/* Profile */}
+      {/* ── AI Settings ─────────────────────────────────────────────────── */}
+      <div style={card}>
+        <h2 style={{ fontWeight: 700, fontSize: "1.1rem", marginBottom: "0.35rem" }}>AI Settings</h2>
+        <p style={{ color: "#777", fontSize: "0.875rem", marginBottom: "1.5rem" }}>
+          Choose your default model and add API keys. Keys you add are used directly (BYOK — no extra charge).
+          Without a key, the platform&apos;s key is used — Claude is included in paid plans;
+          other models are billed at{" "}
+          <strong style={{ color: "#e05a2b" }}>3× provider cost</strong> via your subscription.
+        </p>
+
+        {/* Model picker */}
+        <div style={{ marginBottom: "1.75rem" }}>
+          <label style={{ display: "block", fontSize: "0.875rem", marginBottom: "0.5rem", color: "#ccc" }}>
+            Default model
+          </label>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            {providers.map((prov) => (
+              <div key={prov}>
+                <div style={{ fontSize: "0.75rem", color: "#555", marginBottom: "0.35rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  {PROVIDER_LABELS[prov]}
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                  {MODELS_BY_PROVIDER[prov].map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => saveModel(m.id)}
+                      disabled={aiLoading}
+                      style={{
+                        padding: "0.4rem 0.85rem",
+                        borderRadius: 8,
+                        border: m.id === preferredModel ? "1px solid #e05a2b" : "1px solid #2a2a2a",
+                        background: m.id === preferredModel ? "rgba(224,90,43,0.1)" : "#0a0a0a",
+                        color: m.id === preferredModel ? "#e05a2b" : "#aaa",
+                        fontSize: "0.85rem",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {m.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          {selectedModel && (
+            <p style={{ marginTop: "0.6rem", fontSize: "0.8rem", color: "#555" }}>
+              Selected: <span style={{ color: "#888" }}>{selectedModel.name}</span>
+              {selectedModel.provider !== "anthropic" && (
+                <span style={{ color: "#e05a2b" }}>
+                  {" "}· ${(selectedModel.inputPricePerM * 3).toFixed(2)}/M in · ${(selectedModel.outputPricePerM * 3).toFixed(2)}/M out (platform key)
+                </span>
+              )}
+              {selectedModel.provider === "anthropic" && (
+                <span style={{ color: "#22c55e" }}> · Included in paid plans</span>
+              )}
+            </p>
+          )}
+        </div>
+
+        {/* Per-provider key management */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          {providers.map((prov) => (
+            <div key={prov} style={{ borderTop: "1px solid #1a1a1a", paddingTop: "1.25rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.6rem" }}>
+                <span style={{ fontSize: "0.9rem", fontWeight: 600, color: "#ccc" }}>
+                  {PROVIDER_LABELS[prov]}
+                </span>
+                {hasKey[prov] ? (
+                  <span style={savedBadge}>✓ key saved</span>
+                ) : (
+                  <span style={{ fontSize: "0.78rem", color: "#555" }}>no key — uses platform key</span>
+                )}
+                <a
+                  href={PROVIDER_DOCS[prov]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ marginLeft: "auto", fontSize: "0.78rem", color: "#e05a2b" }}
+                >
+                  Get key ↗
+                </a>
+              </div>
+              <div style={{ display: "flex", gap: "0.5rem", maxWidth: 440 }}>
+                <input
+                  type="password"
+                  value={keyInput[prov]}
+                  onChange={(e) => setKeyInput((prev) => ({ ...prev, [prov]: e.target.value }))}
+                  placeholder={PROVIDER_PLACEHOLDERS[prov]}
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={aiLoading || !keyInput[prov]}
+                  onClick={() => saveProviderKey(prov, keyInput[prov])}
+                  style={{ whiteSpace: "nowrap" }}
+                >
+                  {hasKey[prov] ? "Replace" : "Save"}
+                </button>
+                {hasKey[prov] && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    disabled={aiLoading}
+                    onClick={() => saveProviderKey(prov, "")}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {aiMsg && (
+          <p className={aiMsg.ok ? "success-msg" : "error-msg"} style={{ marginTop: "1rem" }}>
+            {aiMsg.text}
+          </p>
+        )}
+      </div>
+
+      {/* ── Profile ──────────────────────────────────────────────────────── */}
       <div style={card}>
         <h2 style={{ fontWeight: 700, fontSize: "1.1rem", marginBottom: "1.25rem" }}>Profile</h2>
         <form onSubmit={saveProfile} style={{ display: "flex", flexDirection: "column", gap: "1rem", maxWidth: 440 }}>
@@ -139,7 +361,7 @@ export default function SettingsClient({ user }: Props) {
         </form>
       </div>
 
-      {/* Password */}
+      {/* ── Password ─────────────────────────────────────────────────────── */}
       <div style={card}>
         <h2 style={{ fontWeight: 700, fontSize: "1.1rem", marginBottom: "1.25rem" }}>
           {user.hasPassword ? "Change password" : "Set a password"}
@@ -193,7 +415,7 @@ export default function SettingsClient({ user }: Props) {
         </form>
       </div>
 
-      {/* Danger zone */}
+      {/* ── Danger zone ───────────────────────────────────────────────────── */}
       <div style={{ ...card, border: "1px solid rgba(239,68,68,0.3)" }}>
         <h2 style={{ fontWeight: 700, fontSize: "1.1rem", color: "#ef4444", marginBottom: "0.5rem" }}>
           Danger zone
@@ -204,7 +426,11 @@ export default function SettingsClient({ user }: Props) {
         </p>
 
         {!showDelete ? (
-          <button className="btn" style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)" }} onClick={() => setShowDelete(true)}>
+          <button
+            className="btn"
+            style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)" }}
+            onClick={() => setShowDelete(true)}
+          >
             Delete my account
           </button>
         ) : (

@@ -15,6 +15,12 @@ model User {
   image         String?
   password      String?
   onboardingCompleted Boolean @default(false)
+  // BYOK keys per provider — null = use platform key (requires paid plan)
+  anthropicApiKey String?  @db.Text
+  openaiApiKey    String?  @db.Text
+  geminiApiKey    String?  @db.Text
+  // Which model the user has chosen (e.g. "claude-sonnet-4-6", "gpt-4o")
+  preferredModel  String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -22,6 +28,8 @@ model User {
   sessions     Session[]
   subscription Subscription?
   channels     UserChannel[]
+  messages     Message[]
+  usageRecords UsageRecord[]
 }
 
 model UserChannel {
@@ -73,6 +81,35 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// Tracks token usage for non-Claude models billed via Stripe metered billing
+model UsageRecord {
+  id           String   @id @default(cuid())
+  userId       String
+  channel      String
+  model        String
+  provider     String   // anthropic | openai | google
+  inputTokens  Int
+  outputTokens Int
+  costUsd      Float    // provider cost in USD
+  billedUsd    Float    // what we charge (3× markup for non-Claude)
+  reportedStripe Boolean @default(false)
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Stores per-user, per-channel conversation history for Claude context
+model Message {
+  id        String   @id @default(cuid())
+  userId    String
+  channel   String
+  role      String   // user | assistant
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Subscription {

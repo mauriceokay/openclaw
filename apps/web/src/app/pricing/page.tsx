@@ -8,9 +8,9 @@ import Navbar from "@/components/Navbar";
 import { PLANS } from "@/lib/stripe";
 
 const FREE_FEATURES = [
-  "Up to 50 messages/day",
-  "2 messaging channels",
-  "Basic memory",
+  "Bring your own Anthropic API key",
+  "All messaging channels",
+  "Conversation memory",
   "Community support",
 ];
 
@@ -76,7 +76,7 @@ export default function PricingPage() {
               flexDirection: "column",
             }}>
               <div style={{ fontWeight: 600, fontSize: "1.1rem", marginBottom: "0.25rem" }}>Free</div>
-              <div style={{ color: "#777", fontSize: "0.875rem", marginBottom: "1.5rem" }}>Get started at no cost</div>
+              <div style={{ color: "#777", fontSize: "0.875rem", marginBottom: "1.5rem" }}>Use your own Anthropic API key</div>
               <div style={{ marginBottom: "1.75rem" }}>
                 <span style={{ fontSize: "2.5rem", fontWeight: 800 }}>$0</span>
                 <span style={{ color: "#666", fontSize: "0.9rem" }}> / month</span>

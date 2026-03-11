@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
 import SettingsClient from "./SettingsClient";
+import { DEFAULT_MODEL_ID } from "@/lib/models";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -11,7 +12,16 @@ export default async function SettingsPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, name: true, email: true, password: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      password: true,
+      anthropicApiKey: true,
+      openaiApiKey: true,
+      geminiApiKey: true,
+      preferredModel: true,
+    },
   });
 
   if (!user) redirect("/login");
@@ -35,6 +45,12 @@ export default async function SettingsPage() {
               name: user.name,
               email: user.email,
               hasPassword: !!user.password,
+            }}
+            aiSettings={{
+              preferredModel: user.preferredModel ?? DEFAULT_MODEL_ID,
+              hasAnthropicKey: !!user.anthropicApiKey,
+              hasOpenaiKey: !!user.openaiApiKey,
+              hasGeminiKey: !!user.geminiApiKey,
             }}
           />
         </div>
