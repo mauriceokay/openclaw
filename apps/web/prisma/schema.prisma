@@ -14,6 +14,7 @@ model User {
   emailVerified DateTime?
   image         String?
   password      String?
+  role          String    @default("user") // user | admin
   onboardingCompleted Boolean @default(false)
   // BYOK keys per provider — null = use platform key (requires paid plan)
   anthropicApiKey String?  @db.Text
