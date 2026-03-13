@@ -1,7 +1,7 @@
 name: Labeler
 
 on:
-  pull_request_target:
+  pull_request_target: # zizmor: ignore[dangerous-triggers] maintainer-owned triage workflow; no untrusted checkout or PR code execution
     types: [opened, synchronize, reopened]
   issues:
     types: [opened]
@@ -15,6 +15,9 @@ on:
         description: "PRs per page (1-100)"
         required: false
         default: "50"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 permissions: {}
 
