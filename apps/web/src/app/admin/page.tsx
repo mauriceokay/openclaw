@@ -69,10 +69,10 @@ export default async function AdminOverviewPage() {
         <div style={{ background: "#111", border: "1px solid #1f1f1f", borderRadius: 12, padding: "1.5rem" }}>
           <h3 style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: "1rem" }}>Users by plan</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-            {["free", "pro", "team"].map((plan) => {
+            {["free", "starter", "growth", "pro"].map((plan) => {
               const count = plans[plan] ?? 0;
               const pct = totalUsers > 0 ? Math.round((count / totalUsers) * 100) : 0;
-              const colors: Record<string, string> = { free: "#555", pro: "#e05a2b", team: "#22c55e" };
+              const colors: Record<string, string> = { free: "#555", starter: "#3b82f6", growth: "#e05a2b", pro: "#22c55e" };
               return (
                 <div key={plan}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.25rem" }}>

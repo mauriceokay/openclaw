@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, FormEvent } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
+import { MODELS, DEFAULT_MODEL_ID } from "@/lib/models";
 
 interface Message {
   role: "user" | "assistant";
@@ -14,7 +15,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [model, setModel] = useState("claude-sonnet-4-5");
+  const [model, setModel] = useState(DEFAULT_MODEL_ID);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -119,11 +120,9 @@ export default function ChatPage() {
                 color: "#ccc", padding: "0.35rem 0.6rem", fontSize: "0.8rem", cursor: "pointer",
               }}
             >
-              <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
-              <option value="claude-opus-4-5">Claude Opus 4.5</option>
-              <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
-              <option value="gpt-4o">GPT-4o</option>
-              <option value="gpt-4o-mini">GPT-4o mini</option>
+              {MODELS.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
             </select>
           </div>
 

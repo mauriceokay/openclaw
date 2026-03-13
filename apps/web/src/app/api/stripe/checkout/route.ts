@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { stripe, PLANS, type PlanKey } from "@/lib/stripe";
+import { stripe, PLANS, type PlanKey, type BillingInterval } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { plan } = await req.json() as { plan: PlanKey };
+  const { plan, interval = "monthly" } = await req.json() as { plan: PlanKey; interval?: BillingInterval };
 
   if (!PLANS[plan]) {
     return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     customer: customerId,
     mode: "subscription",
     payment_method_types: ["card"],
-    line_items: [{ price: PLANS[plan].priceId, quantity: 1 }],
+    line_items: [{ price: interval === "yearly" ? PLANS[plan].yearlyPriceId : PLANS[plan].priceId, quantity: 1 }],
     success_url: `${origin}/onboarding?upgraded=true`,
     cancel_url: `${origin}/pricing`,
     metadata: { userId: session.user.id, plan },

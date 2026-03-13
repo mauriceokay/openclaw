@@ -94,7 +94,7 @@ model UsageRecord {
   inputTokens  Int
   outputTokens Int
   costUsd      Float    // provider cost in USD
-  billedUsd    Float    // what we charge (3× markup for non-Claude)
+  billedUsd    Float    // what we charge (costUsd × (1 + markup))
   reportedStripe Boolean @default(false)
   createdAt    DateTime @default(now())
 
@@ -121,7 +121,7 @@ model Subscription {
   stripePriceId        String?
   stripeCurrentPeriodEnd DateTime?
   status               String    @default("inactive") // active, inactive, canceled, past_due, trialing
-  plan                 String    @default("free") // free, pro, team
+  plan                 String    @default("free") // free, starter, growth, pro
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 

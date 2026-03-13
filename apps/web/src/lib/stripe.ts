@@ -6,32 +6,49 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 export const PLANS = {
-  pro: {
-    name: "Pro",
-    description: "For individual power users",
-    price: 12,
-    priceId: process.env.STRIPE_PRO_PRICE_ID!,
+  starter: {
+    name: "Starter",
+    description: "Get started with AI messaging",
+    monthlyPrice: 19,
+    yearlyPrice: 190, // ~2 months free
+    priceId: process.env.STRIPE_STARTER_PRICE_ID!,
+    yearlyPriceId: process.env.STRIPE_STARTER_YEARLY_PRICE_ID!,
     features: [
-      "Unlimited AI messages",
       "All messaging channels",
+      "Claude & GPT-4o access",
+      "Pay-as-you-go usage billing",
+      "Community support",
+    ],
+  },
+  growth: {
+    name: "Growth",
+    description: "For power users and small teams",
+    monthlyPrice: 49,
+    yearlyPrice: 490, // ~2 months free
+    priceId: process.env.STRIPE_GROWTH_PRICE_ID!,
+    yearlyPriceId: process.env.STRIPE_GROWTH_YEARLY_PRICE_ID!,
+    features: [
+      "Everything in Starter",
       "Priority support",
       "Custom assistant identity",
       "Voice & TTS",
     ],
   },
-  team: {
-    name: "Team",
+  pro: {
+    name: "Pro",
     description: "For teams and businesses",
-    price: 39,
-    priceId: process.env.STRIPE_TEAM_PRICE_ID!,
+    monthlyPrice: 199,
+    yearlyPrice: 1990, // ~2 months free
+    priceId: process.env.STRIPE_PRO_PRICE_ID!,
+    yearlyPriceId: process.env.STRIPE_PRO_YEARLY_PRICE_ID!,
     features: [
-      "Everything in Pro",
+      "Everything in Growth",
       "Up to 10 team members",
       "Shared memory & context",
-      "Admin dashboard",
       "SLA support",
     ],
   },
 } as const;
 
 export type PlanKey = keyof typeof PLANS;
+export type BillingInterval = "monthly" | "yearly";

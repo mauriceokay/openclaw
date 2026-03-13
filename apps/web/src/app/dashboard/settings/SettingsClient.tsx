@@ -210,9 +210,8 @@ export default function SettingsClient({ user, aiSettings }: Props) {
         <h2 style={{ fontWeight: 700, fontSize: "1.1rem", marginBottom: "0.35rem" }}>AI Settings</h2>
         <p style={{ color: "#777", fontSize: "0.875rem", marginBottom: "1.5rem" }}>
           Choose your default model and add API keys. Keys you add are used directly (BYOK — no extra charge).
-          Without a key, the platform&apos;s key is used — Claude is included in paid plans;
-          other models are billed at{" "}
-          <strong style={{ color: "#e05a2b" }}>3× provider cost</strong> via your subscription.
+          Without a key, the platform&apos;s key is used and usage is billed at a markup
+          (see per-model rates below) via your subscription.
         </p>
 
         {/* Model picker */}
@@ -253,14 +252,6 @@ export default function SettingsClient({ user, aiSettings }: Props) {
           {selectedModel && (
             <p style={{ marginTop: "0.6rem", fontSize: "0.8rem", color: "#555" }}>
               Selected: <span style={{ color: "#888" }}>{selectedModel.name}</span>
-              {selectedModel.provider !== "anthropic" && (
-                <span style={{ color: "#e05a2b" }}>
-                  {" "}· ${(selectedModel.inputPricePerM * 3).toFixed(2)}/M in · ${(selectedModel.outputPricePerM * 3).toFixed(2)}/M out (platform key)
-                </span>
-              )}
-              {selectedModel.provider === "anthropic" && (
-                <span style={{ color: "#22c55e" }}> · Included in paid plans</span>
-              )}
             </p>
           )}
         </div>
